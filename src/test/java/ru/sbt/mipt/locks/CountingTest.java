@@ -1,9 +1,6 @@
 package ru.sbt.mipt.locks;
 
-import lombok.Getter;
-import lombok.Setter;
 import org.junit.jupiter.api.Test;
-import ru.sbt.mipt.locks.impl.TASLock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,62 +13,57 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CountingTest {
-    @Getter
-    @Setter
-    private static class Counter {
-        private long count;
-        private static SpinLock lock;
 
-        public Counter(long count, SpinLock lock) {
-            this.count = count;
-            Counter.lock = lock;
-        }
-
-        public void increment(long value) {
-            lock.lock();
-            try {
-                count += value;
-            } finally {
-                lock.unlock();
-            }
-        }
-    }
-
-    private record CounterIncrementOperation(Counter counter, long amount) {
-    }
+//    private record CounterIncrementOperation(SimpleCounter counter, long amount) {
+//    }
 
     @Test
     public void parallelCountTest() {
+        // given
         SystemPropertyParser parser = new SystemPropertyParser();
         List<SpinLock> locks = parser.parseLockType();
 
         int availableProcessors = getRuntime().availableProcessors();
         assertTrue(availableProcessors > 1);
-        ExecutorService executorServiceExecutors = newFixedThreadPool(availableProcessors);
+        ExecutorService executorService = newFixedThreadPool(availableProcessors);
 
-        locks.forEach(lock -> parallelCountExecute(lock, executorServiceExecutors));
+        ParallelCountTaskExecutor taskExecutor = new ParallelCountTaskExecutor(executorService);
+
+        locks.forEach(lock -> {
+            SimpleCounter counter = new SimpleCounter(100, lock);
+            List<CounterIncrementOperation> operations = createCounterOperations(counter);
+
+            // when
+            taskExecutor.executeCountOperations(operations);
+
+            // then
+            assertEquals(100, counter.getCount());
+        });
     }
 
-    private void parallelCountExecute(SpinLock lock, ExecutorService executorService) {
-        //given
-        Counter counter = new Counter(100, lock);
+//    private void parallelCountExecute(SimpleCounter counter, ExecutorService executorService) {
+//        //given
+////        SimpleCounter counter = new SimpleCounter(100, lock);
+//
+//
+//
+//        //when
+//
+//        //then
+//    }
 
+    private static List<CounterIncrementOperation> createCounterOperations(SimpleCounter counter) {
         List<CounterIncrementOperation> operations = new ArrayList<>();
         for (int i = 0; i < 1_000_000; i++) {
             operations.add(new CounterIncrementOperation(counter, 1));
             operations.add(new CounterIncrementOperation(counter, -1));
         }
-
-        //when
-        executeOperations(operations, executorService);
-
-        //then
-        assertEquals(100, counter.getCount());
+        return operations;
     }
 
-    private void executeOperations(List<CounterIncrementOperation> counterIncrementOperations, ExecutorService executorService) {
-        counterIncrementOperations.stream()
-                .map(operation -> runAsync(() ->
-                        operation.counter.increment(operation.amount), executorService));
-    }
+//    private void executeOperations(List<CounterIncrementOperation> counterIncrementOperations, ExecutorService executorService) {
+//        counterIncrementOperations.stream()
+//                .map(operation -> runAsync(() ->
+//                        operation.counter().addAndReturnNewValue(operation.amount()), executorService));
+//    }
 }
