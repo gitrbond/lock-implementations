@@ -1,4 +1,6 @@
-package ru.sbt.mipt.locks;
+package ru.sbt.mipt.locks.impl;
+
+import ru.sbt.mipt.locks.SpinLock;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
