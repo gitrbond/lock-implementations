@@ -1,0 +1,53 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.0.5'
+    id 'io.spring.dependency-management' version '1.1.0'
+}
+
+group = 'ru.sbt.mipt'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    jcenter()
+}
+
+dependencies {
+//    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+//            'org.springframework.retry:spring-retry'
+    implementation 'org.projectlombok:lombok:1.18.22'
+
+//    runtimeOnly "org.postgresql:postgresql"
+
+    compileOnly 'org.projectlombok:lombok:1.18.26'
+    annotationProcessor 'org.projectlombok:lombok:1.18.26'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.26'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.26'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.0.5'
+//    testImplementation 'org.testng:testng:7.1.0'
+//    testImplementation 'junit:junit:4.13.1'
+//            'io.zonky.test:embedded-database-spring-test:2.2.0',
+//            'io.zonky.test:embedded-postgres:2.0.3'
+    // benchmarking
+//    jmhImplementation 'org.openjdk.jmh:jmh-core:1.27'
+//    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.27'
+
+}
+
+//sourceSets {
+//    test {
+//        java.srcDirs = ['src/main/', 'src/test/']
+//    }
+//}
+
+test {
+    systemProperty 'lockType', System.getProperty('lockType')
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
