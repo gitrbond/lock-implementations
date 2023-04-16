@@ -42,8 +42,8 @@ public class CountingTest {
 
     @Test
     public void parallelCountTest() {
-        List<SpinLock> locks = new ArrayList<>();
-        locks.add(new TASLock());
+        SystemPropertyParser parser = new SystemPropertyParser();
+        List<SpinLock> locks = parser.parseLockType();
 
         int availableProcessors = getRuntime().availableProcessors();
         assertTrue(availableProcessors > 1);

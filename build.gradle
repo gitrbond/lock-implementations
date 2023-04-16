@@ -32,6 +32,9 @@ dependencies {
 //    testImplementation 'junit:junit:4.13.1'
 //            'io.zonky.test:embedded-database-spring-test:2.2.0',
 //            'io.zonky.test:embedded-postgres:2.0.3'
+    // benchmarking
+//    jmhImplementation 'org.openjdk.jmh:jmh-core:1.27'
+//    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.27'
 
 }
 
@@ -40,6 +43,10 @@ dependencies {
 //        java.srcDirs = ['src/main/', 'src/test/']
 //    }
 //}
+
+test {
+    systemProperty 'lockType', System.getProperty('lockType')
+}
 
 tasks.named('test') {
     useJUnitPlatform()
