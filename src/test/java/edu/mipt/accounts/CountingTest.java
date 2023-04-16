@@ -4,7 +4,6 @@ package edu.mipt.accounts;
 
 import lombok.Getter;
 import lombok.Setter;
-//import org.junit.Test;
 import org.junit.jupiter.api.Test;
 import ru.sbt.mipt.locks.SpinLock;
 import ru.sbt.mipt.locks.TASLock;
@@ -12,85 +11,58 @@ import ru.sbt.mipt.locks.TASLock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.locks.Lock;
 
 import static java.lang.Runtime.getRuntime;
 import static java.util.concurrent.CompletableFuture.runAsync;
-//import static org.junit.Assert.assertEquals;
 import static java.util.concurrent.Executors.newFixedThreadPool;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-//import static org.junit.jupiter.api.Assertions.assertAll;
-//import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CountingTest {
     @Getter
     @Setter
-    private class Account {
-        private long id;
-        private long balance;
+    private class Counter {
+        private long count;
         private static SpinLock lock;
 
-        public Account(long id, long balance, SpinLock lock) {
-            this.id = id;
-            this.balance = balance;
-            this.lock = lock;
+        public Counter(long count, SpinLock lock) {
+            this.count = count;
+            Counter.lock = lock;
         }
 
-        private void put(long value) {
-            balance += value;
-        }
-
-        private void take(long value) {
-            balance -= value;
-        }
-
-        public static void transfer(Account fromAccount, Account toAccount, long amount) {
+        public void increment(long value) {
             lock.lock();
             try {
-                fromAccount.take(amount);
-                toAccount.put(amount);
+                count += value;
             } finally {
                 lock.unlock();
             }
         }
     }
 
-    private record Transfer(Account from, Account to, long amount) {
+    private record CounterIncrementOperation(Counter counter, long amount) {
     }
 
     @Test
     public void parallelTransfer() {
         //given
         SpinLock lock = new TASLock();
-        Account firstAccount = new Account(1, 100, lock);
-        Account secondAccount = new Account(2, 200, lock);
-        List<Transfer> transfers = new ArrayList<>();
+        Counter counter = new Counter(100, lock);
         int availableProcessors = getRuntime().availableProcessors();
         ExecutorService executorServiceExecutors = newFixedThreadPool(availableProcessors);
+        List<CounterIncrementOperation> operations = new ArrayList<>();
         for (int i = 0; i < 1_000_000; i++) {
-            transfers.add(new Transfer(firstAccount, secondAccount, 1));
-            transfers.add(new Transfer(secondAccount, firstAccount, 1));
+            operations.add(new CounterIncrementOperation(counter, 1));
+            operations.add(new CounterIncrementOperation(counter, -1));
         }
         //when
-        executeTransfers(transfers, executorServiceExecutors);
+        executeOperations(operations, executorServiceExecutors);
         //then
-        assertEquals(100, firstAccount.getBalance());
-        assertEquals(200, secondAccount.getBalance());
+        assertEquals(100, counter.getCount());
     }
 
-    private void executeTransfers(List<Transfer> transfers, ExecutorService executorService) {
-        transfers.stream()
-                .map(transfer -> runAsync(() ->
-                        Account.transfer(transfer.from(), transfer.to(), transfer.amount()), executorService));
+    private void executeOperations(List<CounterIncrementOperation> counterIncrementOperations, ExecutorService executorService) {
+        counterIncrementOperations.stream()
+                .map(operation -> runAsync(() ->
+                        operation.counter.increment(operation.amount), executorService));
     }
-
-//    private List<Transfer> createTransfers() {
-//        List<Transfer> transfers = new ArrayList<>();
-//        for (int i = 0; i < 1_000_000; i++) {
-//            transfers.add(new Transfer(1L, 2L, 1));
-//            transfers.add(new Transfer(2L, 1L, 1));
-//        }
-//        return transfers;
-//    }
 }
