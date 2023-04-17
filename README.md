@@ -1,2 +1,2 @@
 # lock-implementations
-implementations of multiprocess locks
+Implementations of multithread locks

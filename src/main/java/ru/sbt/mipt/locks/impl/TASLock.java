@@ -5,15 +5,20 @@ import ru.sbt.mipt.locks.SpinLock;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TASLock implements SpinLock {
-    AtomicBoolean state = new AtomicBoolean(false);
+    AtomicBoolean locked = new AtomicBoolean(false); // true - лок захвачен, false - свободен
 
     @Override
     public void lock() {
-        while (state.getAndSet(true)) {}
+        while (locked.getAndSet(true)) {}
     }
 
     @Override
     public void unlock() {
-        state.set(false);
+        locked.set(false);
+    }
+
+    @Override
+    public boolean isLocked() {
+        return locked.get();
     }
 }
