@@ -12,18 +12,12 @@ import static java.util.concurrent.Executors.newFixedThreadPool;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @State(Scope.Benchmark)
-@BenchmarkMode(Mode.AverageTime)
+@BenchmarkMode(Mode.All)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 3, time = 5, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 3, time = 5, timeUnit = TimeUnit.SECONDS)
 public class SingleLockBenchmark {
-
-//    private static final int FORK_COUNT = 2;
-//    private static final int WARMUP_COUNT = 10;
-//    private static final int ITERATION_COUNT = 10;
-//    private static final int THREAD_COUNT = 2;
     Map<String, SpinLock> lockMap;
-//    Map<String, SimpleCounter> counterMap; // = new SimpleCounter(0, lock);
     SimpleCounter tASCounter;
     SimpleCounter tTASCounter;
     SimpleCounter backoffCounter;
@@ -35,7 +29,6 @@ public class SingleLockBenchmark {
         tASCounter = new SimpleCounter(0, lockMap.get("TASLock"));
         tTASCounter = new SimpleCounter(0, lockMap.get("TTASLock"));
         backoffCounter = new SimpleCounter(0, lockMap.get("BackoffLock"));
-        System.out.println("i setup!");
     }
 
     @Benchmark
@@ -46,8 +39,9 @@ public class SingleLockBenchmark {
     @Benchmark
     public long benchmarkTTAS() {
         return tTASCounter.addAndReturnNewValue(1L);
+    }
 
-    }@Benchmark
+    @Benchmark
     public long benchmarkBackoff() {
         return backoffCounter.addAndReturnNewValue(1L);
     }

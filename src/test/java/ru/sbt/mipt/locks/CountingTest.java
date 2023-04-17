@@ -1,66 +1,50 @@
 package ru.sbt.mipt.locks;
 
-import lombok.Getter;
-import lombok.Setter;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import ru.sbt.mipt.locks.impl.*;
 import ru.sbt.mipt.locks.util.LockTypes;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import static java.lang.Runtime.getRuntime;
 import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.concurrent.Executors.newFixedThreadPool;
 import static org.junit.jupiter.api.Assertions.*;
 import static ru.sbt.mipt.locks.ParallelCountTaskExecutor.createCounterOperations;
+import static ru.sbt.mipt.locks.util.SystemPropertyParser.parseBenchmarkOptions;
 
 public class CountingTest {
-    BenchmarkOptions options = new BenchmarkOptions(10,
+    // default benchmark parameters
+    private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(8,
+            7,
+            1_000_000,
             3,
-            100_000,
-            3,
-            100_000);
-    // TODO Читать параметры извне (из файла/аргументов запуска)
+            1_000_000);
+    private static BenchmarkOptions options;
 
-    // Микротаски - по одной операции на таску
-    private void executeOperations(List<CounterIncrementOperation> counterIncrementOperations, ExecutorService executorService) {
-        counterIncrementOperations.stream()
-                .map(operation -> runAsync(() ->
-                        operation.counter().addAndReturnNewValue(operation.amount()), executorService));
+    // before executing any tests, read benchmark options from systemProperties
+    // they can be set as 'gradle test -D<option>=<value>'
+    @BeforeAll
+    public static void setup() {
+        options = parseBenchmarkOptions(defaultOptions);
     }
 
-//    private void parallelCountExecute(SpinLock lock, ExecutorService executorService) {
-//        //given
-//        SimpleCounter counter = new SimpleCounter(100, lock);
-//
-//        List<CounterIncrementOperation> operations = new ArrayList<>();
-//        for (long i = 0; i < totalOperations; i++) {
-//            operations.add(new CounterIncrementOperation(counter, 1));
-//            operations.add(new CounterIncrementOperation(counter, -1));
-//        }
-//        //when
-//        executeOperations(operations, executorService);
-//        //then
-//        assertEquals(100, counter.getCount());
-//    }
-
-    private void oneLockRun(SpinLock lock) {
+    private void handWrittenLockBenchmarkAndTest(SpinLock lock) {
         SimpleCounter counter = new SimpleCounter(0, lock);
         ExecutorService executorService = newFixedThreadPool(options.nThreads());
         ParallelCountTaskExecutor taskExecutor = new ParallelCountTaskExecutor(executorService);
 
         long expectedCount = 0;
         List<CounterIncrementOperation> operations;
-        List<CompletableFuture<Void>> futures;
 
         // warmup
         for (int warmupIter = 1; warmupIter <= options.warmupIterations(); warmupIter++) {
+            // a unique set of operations so JVM cant optimise it
             operations = createCounterOperations(counter, options.nWarmupTotalTasks(), warmupIter);
-            futures = taskExecutor.executeCountOperations(operations);
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join(); // Подождем пока все задачи отработают
+            taskExecutor.executeCountOperations(operations);
 
             assertEquals(counter.getCount(), expectedCount += options.nWarmupTotalTasks() * warmupIter);
         }
@@ -68,45 +52,50 @@ public class CountingTest {
         // measure
         long avgTimeMillis = 0;
         for (int measureIter = 1; measureIter <= options.measureIterations(); measureIter++) {
+            // a unique set of operations
             operations = createCounterOperations(counter, options.nMeasureTotalTasks(), -measureIter);
 
             long tStart = System.currentTimeMillis();
-            futures = taskExecutor.executeCountOperations(operations);
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join(); // Подождем пока все задачи отработают
+            taskExecutor.executeCountOperations(operations);
             long tEnd = System.currentTimeMillis();
             avgTimeMillis += (tEnd - tStart) / options.measureIterations();
 
             assertEquals(counter.getCount(), expectedCount -= options.nMeasureTotalTasks() * measureIter);
         }
-        System.out.println("avgTimeMillis for lock " + lock.getClass().getSimpleName() + " = " + avgTimeMillis);
+        System.out.println("@");
+        System.out.println("Benchmark results for " + lock.getClass().getSimpleName() + ":");
+        System.out.println(options);
+        System.out.println("avgTime to execute one task = " +
+                avgTimeMillis * 1_000_000 * options.nThreads() / options.nMeasureTotalTasks() + "ns");
     }
 
     @Test
     public void TASLockTest() {
-        oneLockRun(new TASLock());
+        handWrittenLockBenchmarkAndTest(new TASLock());
     }
 
     @Test
     public void TTASLockTest() {
-        oneLockRun(new TTASLock());
+        handWrittenLockBenchmarkAndTest(new TTASLock());
     }
 
     @Test
     public void BackoffLockTest() {
-        oneLockRun(new BackoffLock());
+        handWrittenLockBenchmarkAndTest(new BackoffLock());
     }
 
     // Фиксация некорректной параллельной обработки без использования синхронизации.
     // Тест должен падать при 1 потоке или если totalOperations достаточно мало (~единицы тысяч).
+    @Disabled
     @Test
     public void NoLockTest() {
-        oneLockRun(new NoLock());
+        handWrittenLockBenchmarkAndTest(new NoLock());
     }
 
     @Test
     public void AllLocksTest() {
         List<SpinLock> locks = LockTypes.LOCK_LIST;
-        locks.forEach(lock -> oneLockRun(new NoLock()));
+        locks.forEach(this::handWrittenLockBenchmarkAndTest);
     }
 
 }
