@@ -13,11 +13,13 @@ import static java.util.concurrent.CompletableFuture.runAsync;
 public class ParallelCountTaskExecutor {
     private final ExecutorService executorService;
 
-    public List<CompletableFuture<Void>> executeCountOperations(List<CounterIncrementOperation> counterIncrementOperations) {
-        return counterIncrementOperations.stream()
+    public void executeCountOperations(List<CounterIncrementOperation> counterIncrementOperations) {
+        List<CompletableFuture<Void>> futures = counterIncrementOperations.stream()
                 .map(operation -> runAsync(() ->
                         operation.counter().addAndReturnNewValue(operation.amount()), executorService))
                 .toList();
+        // wait till all tasks end
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     }
 
     public static List<CounterIncrementOperation> createCounterOperations(SimpleCounter counter, long nOperations, long amount) {
