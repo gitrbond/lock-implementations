@@ -10,7 +10,6 @@ import java.util.List;
 public class SystemPropertyParser {
     private static final String LOCK_TYPE_PROP_NAME = "lockType";
     private static final List<SpinLock> LOCK_TYPES_LIST = LockTypes.LOCK_LIST;
-
     private static final SpinLock DEFAULT_LOCK = new TASLock();
 
 //    public static List<SpinLock> parseLockTypes() {
