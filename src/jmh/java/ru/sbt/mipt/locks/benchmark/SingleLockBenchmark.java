@@ -1,18 +1,16 @@
 package ru.sbt.mipt.locks.benchmark;
 
 import org.openjdk.jmh.annotations.*;
-import ru.sbt.mipt.locks.CounterIncrementOperation;
-import ru.sbt.mipt.locks.ParallelCountTaskExecutor;
-import ru.sbt.mipt.locks.SimpleCounter;
-import ru.sbt.mipt.locks.SpinLock;
+import org.openjdk.jmh.infra.Blackhole;
+import ru.sbt.mipt.locks.*;
 import ru.sbt.mipt.locks.impl.TASLock;
+import ru.sbt.mipt.locks.util.LockTypes;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.stream.Collectors;
 
-import static java.lang.Runtime.getRuntime;
 import static java.util.concurrent.Executors.newFixedThreadPool;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,26 +25,28 @@ public class SingleLockBenchmark {
 //    private static final int WARMUP_COUNT = 10;
 //    private static final int ITERATION_COUNT = 10;
 //    private static final int THREAD_COUNT = 2;
-    SpinLock lock = new TASLock();
-    SimpleCounter counter = new SimpleCounter(0, lock);
+    Map<String, SpinLock> lockMap;
+//    Map<String, SimpleCounter> counterMap; // = new SimpleCounter(0, lock);
+    SimpleCounter TASCounter;
+    SimpleCounter TTASCounter;
 
-
-//    @Benchmark
-//    public void addAndReturnNewValue(Blackhole bh) {
-//        SpinLock lock = new TASLock();
-//        SimpleCounter counter = new SimpleCounter(0, lock);
-//        bh.consume(counter.addAndReturnNewValue(1));
-//    }
-
-    @Benchmark
-    public long addAndReturnNewValue() {
-        return counter.addAndReturnNewValue(1);
+    @Setup
+    public void setup() {
+        lockMap = LockTypes.LOCK_MAP;
+        // for every <String name, SpinLock lock> entry creates a <String name, SimpleCounter(0, lock)> entry
+//        counterMap = lockMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+//                e -> new SimpleCounter(0, e.getValue())));
+        TASCounter = new SimpleCounter(0, lockMap.get("TASLock"));
+        TTASCounter = new SimpleCounter(0, lockMap.get("TTASLock"));
     }
 
-//    @Benchmark
+    @Benchmark
+    public void benchmarkTAS(Blackhole bh) {
+        bh.consume(TASCounter.addAndReturnNewValue(1L));
+    }
 
-
-//    public static void main(String[] args) {
-//
-//    }
+    @Benchmark
+    public long benchmarkTTAS() {
+        return TTASCounter.addAndReturnNewValue(1L);
+    }
 }

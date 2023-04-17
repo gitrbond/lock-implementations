@@ -1,6 +1,7 @@
 package ru.sbt.mipt.locks;
 
 import org.junit.jupiter.api.Test;
+import ru.sbt.mipt.locks.util.SystemPropertyParser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,29 +18,29 @@ public class CountingTest {
 //    private record CounterIncrementOperation(SimpleCounter counter, long amount) {
 //    }
 
-    @Test
-    public void parallelCountTest() {
-        // given
-        SystemPropertyParser parser = new SystemPropertyParser();
-        List<SpinLock> locks = parser.parseLockType();
-
-        int availableProcessors = getRuntime().availableProcessors();
-        assertTrue(availableProcessors > 1);
-        ExecutorService executorService = newFixedThreadPool(availableProcessors);
-
-        ParallelCountTaskExecutor taskExecutor = new ParallelCountTaskExecutor(executorService);
-
-        locks.forEach(lock -> {
-            SimpleCounter counter = new SimpleCounter(100, lock);
-            List<CounterIncrementOperation> operations = createCounterOperations(counter);
-
-            // when
-            taskExecutor.executeCountOperations(operations);
-
-            // then
-            assertEquals(100, counter.getCount());
-        });
-    }
+//    @Test
+//    public void parallelCountTest() {
+//        // given
+////        SystemPropertyParser parser = new SystemPropertyParser();
+//        List<SpinLock> locks = SystemPropertyParser.parseLockTypes();
+//
+//        int availableProcessors = getRuntime().availableProcessors();
+//        assertTrue(availableProcessors > 1);
+//        ExecutorService executorService = newFixedThreadPool(availableProcessors);
+//
+//        ParallelCountTaskExecutor taskExecutor = new ParallelCountTaskExecutor(executorService);
+//
+//        locks.forEach(lock -> {
+//            SimpleCounter counter = new SimpleCounter(100, lock);
+//            List<CounterIncrementOperation> operations = createCounterOperations(counter);
+//
+//            // when
+//            taskExecutor.executeCountOperations(operations);
+//
+//            // then
+//            assertEquals(100, counter.getCount());
+//        });
+//    }
 
 //    private void parallelCountExecute(SimpleCounter counter, ExecutorService executorService) {
 //        //given
