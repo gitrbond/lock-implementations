@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import ru.sbt.mipt.locks.impl.*;
 import ru.sbt.mipt.locks.util.LockTypes;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -18,11 +19,12 @@ import static ru.sbt.mipt.locks.util.SystemPropertyParser.parseBenchmarkOptions;
 
 public class CountingTest {
     // default benchmark parameters
-    private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(8,
-            7,
-            1_000_000,
-            3,
-            1_000_000);
+    private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(
+            8,          // nThreads
+            7,          // warmupIterations
+            1_000_000,  // nWarmupTotalTasks
+            3,          // measureIterations
+            1_000_000); // nMeasureTotalTasks
     private static BenchmarkOptions options;
 
     // before executing any tests, read benchmark options from systemProperties
@@ -82,6 +84,16 @@ public class CountingTest {
     @Test
     public void BackoffLockTest() {
         handWrittenLockBenchmarkAndTest(new BackoffLock());
+    }
+
+    @Test
+    public void CLHLockTest() {
+        handWrittenLockBenchmarkAndTest(new CLHLock());
+    }
+
+    @Test
+    public void MCSLockTest() {
+        handWrittenLockBenchmarkAndTest(new MCSLock());
     }
 
     // Фиксация некорректной параллельной обработки без использования синхронизации.
