@@ -38,3 +38,30 @@ Implementations and benchmarking of TAS, TTAS, Backoff, CLH and MCS multithread 
 Команда ```gradle jmh``` позволяет запустить бенчмарк на каждом локе в отдельности 
 (исследуется само время между входом и выходом из функции инкремента), и по полученным результатам можно сделать вывод
 о latency лока.
+
+# Предварительные результаты тестирования 
+Результат исполнение команды `gradle test -DnThreads=5 -DwarmupTasks=1000000 -DwarmupIters=7 -DmeasureTasks=1000000 -DmeasureIters=3`:
+
+Самым быстрым оказался BackoffLock, а самым медленным - TASLock. На предпоследнем месте MCSLock, что удивительно и требует дальнейшего исследования. Следом TTASLock и CLHLock с ощутимой разницей в перфомансе. 
+~~~
+$
+Benchmark results for BackoffLock:
+BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
+avgTime to execute one task = 2330ns
+$
+Benchmark results for CLHLock:
+BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
+avgTime to execute one task = 3250ns
+$
+Benchmark results for TTASLock:
+BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
+avgTime to execute one task = 3805ns
+$
+Benchmark results for MCSLock:
+BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
+avgTime to execute one task = 4010ns
+$
+Benchmark results for TASLock:
+BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
+avgTime to execute one task = 4025ns
+~~~

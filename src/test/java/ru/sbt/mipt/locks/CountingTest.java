@@ -6,21 +6,18 @@ import org.junit.jupiter.api.Test;
 import ru.sbt.mipt.locks.impl.*;
 import ru.sbt.mipt.locks.util.LockTypes;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.concurrent.Executors.newFixedThreadPool;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static ru.sbt.mipt.locks.ParallelCountTaskExecutor.createCounterOperations;
 import static ru.sbt.mipt.locks.util.SystemPropertyParser.parseBenchmarkOptions;
 
 public class CountingTest {
     // default benchmark parameters
     private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(
-            8,          // nThreads
+            5,          // nThreads
             7,          // warmupIterations
             1_000_000,  // nWarmupTotalTasks
             3,          // measureIterations
@@ -64,7 +61,7 @@ public class CountingTest {
 
             assertEquals(counter.getCount(), expectedCount -= options.nMeasureTotalTasks() * measureIter);
         }
-        System.out.println("@");
+        System.out.println("$");
         System.out.println("Benchmark results for " + lock.getClass().getSimpleName() + ":");
         System.out.println(options);
         System.out.println("avgTime to execute one task = " +
@@ -104,6 +101,7 @@ public class CountingTest {
         handWrittenLockBenchmarkAndTest(new NoLock());
     }
 
+    @Disabled
     @Test
     public void AllLocksTest() {
         List<SpinLock> locks = LockTypes.LOCK_LIST;

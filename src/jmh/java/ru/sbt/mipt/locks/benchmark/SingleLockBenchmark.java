@@ -2,14 +2,12 @@ package ru.sbt.mipt.locks.benchmark;
 
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
-import ru.sbt.mipt.locks.*;
+import ru.sbt.mipt.locks.SimpleCounter;
+import ru.sbt.mipt.locks.SpinLock;
 import ru.sbt.mipt.locks.util.LockTypes;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import static java.util.concurrent.Executors.newFixedThreadPool;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.All)
@@ -21,6 +19,8 @@ public class SingleLockBenchmark {
     SimpleCounter tASCounter;
     SimpleCounter tTASCounter;
     SimpleCounter backoffCounter;
+    SimpleCounter cLHCounter;
+    SimpleCounter mCSCounter;
 
     @Setup
     public void setup() {
@@ -29,6 +29,8 @@ public class SingleLockBenchmark {
         tASCounter = new SimpleCounter(0, lockMap.get("TASLock"));
         tTASCounter = new SimpleCounter(0, lockMap.get("TTASLock"));
         backoffCounter = new SimpleCounter(0, lockMap.get("BackoffLock"));
+        cLHCounter = new SimpleCounter(0, lockMap.get("CLHLock"));
+        mCSCounter = new SimpleCounter(0, lockMap.get("MCSLock"));
     }
 
     @Benchmark
@@ -43,6 +45,16 @@ public class SingleLockBenchmark {
 
     @Benchmark
     public long benchmarkBackoff() {
+        return backoffCounter.addAndReturnNewValue(1L);
+    }
+
+    @Benchmark
+    public long benchmarkCLH() {
+        return backoffCounter.addAndReturnNewValue(1L);
+    }
+
+    @Benchmark
+    public long benchmarkMCS() {
         return backoffCounter.addAndReturnNewValue(1L);
     }
 }

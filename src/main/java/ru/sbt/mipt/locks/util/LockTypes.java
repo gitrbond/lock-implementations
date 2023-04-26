@@ -1,9 +1,7 @@
 package ru.sbt.mipt.locks.util;
 
 import ru.sbt.mipt.locks.SpinLock;
-import ru.sbt.mipt.locks.impl.BackoffLock;
-import ru.sbt.mipt.locks.impl.TASLock;
-import ru.sbt.mipt.locks.impl.TTASLock;
+import ru.sbt.mipt.locks.impl.*;
 
 import java.util.Arrays;
 import java.util.List;
@@ -14,7 +12,9 @@ public class LockTypes {
     public static List<SpinLock> LOCK_LIST= Arrays.asList(
             new TASLock(),
             new TTASLock(),
-            new BackoffLock());
+            new BackoffLock(),
+            new CLHLock(),
+            new MCSLock());
 
     public static Map<String, SpinLock> LOCK_MAP = createLockMap();
 
