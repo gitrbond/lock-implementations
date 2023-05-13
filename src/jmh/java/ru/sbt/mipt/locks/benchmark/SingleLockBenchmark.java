@@ -4,6 +4,7 @@ import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import ru.sbt.mipt.locks.SimpleCounter;
 import ru.sbt.mipt.locks.SpinLock;
+import ru.sbt.mipt.locks.impl.*;
 import ru.sbt.mipt.locks.util.LockTypes;
 
 import java.util.Map;
@@ -26,11 +27,11 @@ public class SingleLockBenchmark {
     public void setup() {
         lockMap = LockTypes.LOCK_MAP;
 
-        tASCounter = new SimpleCounter(0, lockMap.get("TASLock"));
-        tTASCounter = new SimpleCounter(0, lockMap.get("TTASLock"));
-        backoffCounter = new SimpleCounter(0, lockMap.get("BackoffLock"));
-        cLHCounter = new SimpleCounter(0, lockMap.get("CLHLock"));
-        mCSCounter = new SimpleCounter(0, lockMap.get("MCSLock"));
+        tASCounter = new SimpleCounter(0, new TASLock());
+        tTASCounter = new SimpleCounter(0, new TTASLock());
+        backoffCounter = new SimpleCounter(0, new BackoffLock());
+        cLHCounter = new SimpleCounter(0, new CLHLock());
+        mCSCounter = new SimpleCounter(0, new MCSLock());
     }
 
     @Benchmark
@@ -50,11 +51,11 @@ public class SingleLockBenchmark {
 
     @Benchmark
     public long benchmarkCLH() {
-        return backoffCounter.addAndReturnNewValue(1L);
+        return cLHCounter.addAndReturnNewValue(1L);
     }
 
     @Benchmark
     public long benchmarkMCS() {
-        return backoffCounter.addAndReturnNewValue(1L);
+        return mCSCounter.addAndReturnNewValue(1L);
     }
 }

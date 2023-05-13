@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import ru.sbt.mipt.locks.impl.*;
 import ru.sbt.mipt.locks.util.LockTypes;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -19,10 +20,12 @@ public class CountingTest {
     private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(
             5,          // nThreads
             7,          // warmupIterations
-            1_000_000,  // nWarmupTotalTasks
+            100_000,  // nWarmupTotalTasks
             3,          // measureIterations
-            1_000_000); // nMeasureTotalTasks
+            100_000); // nMeasureTotalTasks
     private static BenchmarkOptions options;
+
+    volatile int cnt;
 
     // before executing any tests, read benchmark options from systemProperties
     // they can be set as 'gradle test -D<option>=<value>'
@@ -66,6 +69,44 @@ public class CountingTest {
         System.out.println(options);
         System.out.println("avgTime to execute one task = " +
                 avgTimeMillis * 1_000_000 * options.nThreads() / options.nMeasureTotalTasks() + "ns");
+    }
+
+    public void simpleConcurrentTest(SpinLock lock) {
+        List<Thread> threads = new ArrayList<>();
+        // lock the lock so threads don't start immediately
+        lock.lock();
+
+//        volatile int cnt;
+
+//        ThreadLocal<Boolean> finished = new ArrayList<new Boolean(false)>();
+//        CounterIncrementOperation couter = new CounterIncrementOperation(lock);
+
+        for (int i = 0; i < options.nThreads(); i++) {
+            int finalI = i;
+            Thread t = new Thread(() -> {
+                System.out.println("i am thread" + finalI);
+                for (int iter = 0; iter < options.nWarmupTotalTasks(); iter++) {
+                    try {
+                        lock.lock();
+                        cnt += (finalI) % (iter + 1);
+                    } finally {
+                        lock.unlock();
+                    }
+
+                }
+            });
+            threads.add(t);
+            t.start();
+        }
+
+        lock.unlock();
+
+
+    }
+
+    @Test
+    public void TASSimpleLockTest() {
+        simpleConcurrentTest(new TASLock());
     }
 
     @Test
