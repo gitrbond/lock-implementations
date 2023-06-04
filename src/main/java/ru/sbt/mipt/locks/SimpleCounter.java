@@ -5,11 +5,11 @@ import lombok.Getter;
 @Getter
 public class SimpleCounter {
     private long count;
-    private static SpinLock lock;
+    private SpinLock lock;
 
     public SimpleCounter(long count, SpinLock lock) {
         this.count = count;
-        SimpleCounter.lock = lock;
+        this.lock = lock;
     }
 
     public long addAndReturnNewValue(long value) {

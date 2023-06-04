@@ -3,19 +3,16 @@ package ru.sbt.mipt.locks.util;
 import ru.sbt.mipt.locks.BenchmarkOptions;
 import ru.sbt.mipt.locks.SpinLock;
 import ru.sbt.mipt.locks.impl.TASLock;
-import ru.sbt.mipt.locks.impl.TTASLock;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 public class SystemPropertyParser {
     private static final String LOCK_TYPE_PROP = "lockType";
     private static final String BENCH_THREAD_NUM_PROP = "nThreads";
     private static final String BENCH_WARMUP_ITER_PROP = "warmupIters";
-    private static final String BENCH_WARMUP_TASKS_PROP = "warmupTasks";
+    private static final String BENCH_WARMUP_TIME_PROP = "warmupMillisecs";
     private static final String BENCH_MEASURE_ITER_PROP = "measureIters";
-    private static final String BENCH_MEASURE_TASKS_PROP = "measureTasks";
+    private static final String BENCH_MEASURE_TIME_PROP = "measureMillisecs";
     private static final List<SpinLock> LOCK_TYPES_LIST = LockTypes.LOCK_LIST;
     private static final SpinLock DEFAULT_LOCK = new TASLock();
 
@@ -40,19 +37,19 @@ public class SystemPropertyParser {
     public static BenchmarkOptions parseBenchmarkOptions(BenchmarkOptions current) {
         String pNThreads = System.getProperty(BENCH_THREAD_NUM_PROP);
         String pWarmupIterations = System.getProperty(BENCH_WARMUP_ITER_PROP);
-        String pNWarmupTotalTasks = System.getProperty(BENCH_WARMUP_TASKS_PROP);
+        String pWarmupMillisecs = System.getProperty(BENCH_WARMUP_TIME_PROP);
         String pMeasureIterations = System.getProperty(BENCH_MEASURE_ITER_PROP);
-        String pNMeasureTotalTasks = System.getProperty(BENCH_MEASURE_TASKS_PROP);
+        String pMeasureMillisecs = System.getProperty(BENCH_MEASURE_TIME_PROP);
 
         int nThreads = pNThreads.equals("") ? current.nThreads() : Integer.parseInt(pNThreads);
         long warmupIterations = pWarmupIterations.equals("")
                 ? current.warmupIterations() : Long.parseLong(pWarmupIterations);
-        long nWarmupTotalTasks = pNWarmupTotalTasks.equals("")
-                ? current.nWarmupTotalTasks() : Long.parseLong(pNWarmupTotalTasks);
+        long nWarmupTotalTasks = pWarmupMillisecs.equals("")
+                ? current.warmupMillisecs() : Long.parseLong(pWarmupMillisecs);
         long measureIterations = pMeasureIterations.equals("")
                 ? current.measureIterations() : Long.parseLong(pMeasureIterations);
-        long nMeasureTotalTasks = pNMeasureTotalTasks.equals("")
-                ? current.nWarmupTotalTasks() : Long.parseLong(pNMeasureTotalTasks);
+        long nMeasureTotalTasks = pMeasureMillisecs.equals("")
+                ? current.measureMillisecs() : Long.parseLong(pMeasureMillisecs);
 
         return new BenchmarkOptions(nThreads,
                 warmupIterations,

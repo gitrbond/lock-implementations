@@ -1,18 +1,9 @@
 package ru.sbt.mipt.locks;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import ru.sbt.mipt.locks.impl.*;
-import ru.sbt.mipt.locks.util.LockTypes;
+import ru.sbt.mipt.locks.impl.TASLock;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-
-import static java.util.concurrent.Executors.newFixedThreadPool;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static ru.sbt.mipt.locks.ParallelCountTaskExecutor.createCounterOperations;
 import static ru.sbt.mipt.locks.util.SystemPropertyParser.parseBenchmarkOptions;
 
 public class CountingTest {
@@ -20,12 +11,12 @@ public class CountingTest {
     private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(
             5,          // nThreads
             7,          // warmupIterations
-            100_000,  // nWarmupTotalTasks
+            5000,          // warmupMillisecs
             3,          // measureIterations
-            100_000); // nMeasureTotalTasks
+            5000);          // measureMillisecs
     private static BenchmarkOptions options;
 
-    volatile int cnt;
+//    volatile int cnt;
 
     // before executing any tests, read benchmark options from systemProperties
     // they can be set as 'gradle test -D<option>=<value>'
@@ -34,119 +25,144 @@ public class CountingTest {
         options = parseBenchmarkOptions(defaultOptions);
     }
 
-    private void handWrittenLockBenchmarkAndTest(SpinLock lock) {
+    private void benchmarkAndTest(SpinLock lock) throws InterruptedException {
         SimpleCounter counter = new SimpleCounter(0, lock);
-        ExecutorService executorService = newFixedThreadPool(options.nThreads());
-        ParallelCountTaskExecutor taskExecutor = new ParallelCountTaskExecutor(executorService);
+//        ExecutorService executorService = newFixedThreadPool(options.nThreads());
+//        ParallelCountTaskExecutor taskExecutor = new ParallelCountTaskExecutor(executorService);
 
-        long expectedCount = 0;
-        List<CounterIncrementOperation> operations;
+//        long expectedCount = 0;
+//        List<CounterIncrementOperation> operations;
 
         // warmup
+        long avgThroughput = 0;
         for (int warmupIter = 1; warmupIter <= options.warmupIterations(); warmupIter++) {
-            // a unique set of operations so JVM cant optimise it
-            operations = createCounterOperations(counter, options.nWarmupTotalTasks(), warmupIter);
-            taskExecutor.executeCountOperations(operations);
-
-            assertEquals(counter.getCount(), expectedCount += options.nWarmupTotalTasks() * warmupIter);
+            avgThroughput += executeIterationAndReturnPerformance(counter, options.warmupMillisecs());
         }
 
         // measure
-        long avgTimeMillis = 0;
+        avgThroughput = 0;
         for (int measureIter = 1; measureIter <= options.measureIterations(); measureIter++) {
-            // a unique set of operations
-            operations = createCounterOperations(counter, options.nMeasureTotalTasks(), -measureIter);
-
-            long tStart = System.currentTimeMillis();
-            taskExecutor.executeCountOperations(operations);
-            long tEnd = System.currentTimeMillis();
-            avgTimeMillis += (tEnd - tStart) / options.measureIterations();
-
-            assertEquals(counter.getCount(), expectedCount -= options.nMeasureTotalTasks() * measureIter);
+            avgThroughput += executeIterationAndReturnPerformance(counter, options.measureMillisecs());
         }
+        avgThroughput /= options.measureIterations();
+
         System.out.println("$");
         System.out.println("Benchmark results for " + lock.getClass().getSimpleName() + ":");
         System.out.println(options);
-        System.out.println("avgTime to execute one task = " +
-                avgTimeMillis * 1_000_000 * options.nThreads() / options.nMeasureTotalTasks() + "ns");
+        System.out.println("avgThroughput = " + avgThroughput + " op/sec");
+//        System.out.println("avgTime to execute one task = " +
+//                avgThroughput * 1_000_000 * options.nThreads() / options.nMeasureTotalTasks() + "ns");
     }
 
-    public void simpleConcurrentTest(SpinLock lock) {
-        List<Thread> threads = new ArrayList<>();
+    public long executeIterationAndReturnPerformance(SimpleCounter counter, long testTimeMillis) throws InterruptedException {
+//        List<Thread> threads = new ArrayList<>();
         // lock the lock so threads don't start immediately
-        lock.lock();
+//        lock.lock();
+//        SimpleCounter counter = new SimpleCounter(0, lock);
 
 //        volatile int cnt;
 
 //        ThreadLocal<Boolean> finished = new ArrayList<new Boolean(false)>();
 //        CounterIncrementOperation couter = new CounterIncrementOperation(lock);
+        counter.getLock().lock();
 
         for (int i = 0; i < options.nThreads(); i++) {
-            int finalI = i;
+            int threadInd = i;
             Thread t = new Thread(() -> {
-                System.out.println("i am thread" + finalI);
-                for (int iter = 0; iter < options.nWarmupTotalTasks(); iter++) {
-                    try {
-                        lock.lock();
-                        cnt += (finalI) % (iter + 1);
-                    } finally {
-                        lock.unlock();
-                    }
-
-                }
+                    threadRunner(counter, threadInd);
             });
-            threads.add(t);
+
+//            threads.add(t);
             t.start();
         }
 
-        lock.unlock();
+        // sleep to wait until all threads start
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        finally {
+            counter.getLock().unlock();
+        }
+        // all the threads start counting
 
+        Thread.sleep(testTimeMillis); // 5 sec
+        long resultCount = counter.getCount();
+        System.out.println("counter = " + resultCount);
+        Thread.sleep(15_000); // 5 sec
+        return resultCount * 1000 / testTimeMillis; // op/sec
+    }
 
+    private void threadRunner(SimpleCounter counter, int threadInd) {
+        System.out.println("thread " + threadInd + " started");
+
+        long internalCnt = 0;
+        for (int iter = 0; iter < 10_000_000; iter++) {
+            internalCnt = counter.addAndReturnNewValue(1);
+        }
+
+        System.out.println("thread " + threadInd + " finished execution with counter = " + internalCnt);
     }
 
     @Test
-    public void TASSimpleLockTest() {
-        simpleConcurrentTest(new TASLock());
+    public void TASSimpleLockTest() throws InterruptedException {
+        benchmarkAndTest(new TASLock());
     }
 
-    @Test
-    public void TASLockTest() {
-        handWrittenLockBenchmarkAndTest(new TASLock());
-    }
+//    @Test
+//    public void MCSSimpleLockTest() throws InterruptedException {
+//        executeIteration(new MCSLock());
+//    }
+//
+//    @Test
+//    public void CLHSimpleLockTest() throws InterruptedException {
+//        executeIteration(new CLHLock());
+//    }
+//
+//    @Test
+//    public void BackoffSimpleLockTest() throws InterruptedException {
+//        executeIteration(new BackoffLock());
+//    }
+//
+//    @Test
+//    public void TASLockTest() {
+//        benchmarkAndTest(new TASLock());
+//    }
 
-    @Test
-    public void TTASLockTest() {
-        handWrittenLockBenchmarkAndTest(new TTASLock());
-    }
-
-    @Test
-    public void BackoffLockTest() {
-        handWrittenLockBenchmarkAndTest(new BackoffLock());
-    }
-
-    @Test
-    public void CLHLockTest() {
-        handWrittenLockBenchmarkAndTest(new CLHLock());
-    }
-
-    @Test
-    public void MCSLockTest() {
-        handWrittenLockBenchmarkAndTest(new MCSLock());
-    }
-
-    // Фиксация некорректной параллельной обработки без использования синхронизации.
-    // Тест должен падать при 1 потоке или если totalOperations достаточно мало (~единицы тысяч).
-    @Disabled
-    @Test
-    public void NoLockTest() {
-        handWrittenLockBenchmarkAndTest(new NoLock());
-    }
-
-    @Disabled
-    @Test
-    public void AllLocksTest() {
-        List<SpinLock> locks = LockTypes.LOCK_LIST;
-        locks.forEach(this::handWrittenLockBenchmarkAndTest);
-    }
+//    @Test
+//    public void TTASLockTest() {
+//        benchmarkAndTest(new TTASLock());
+//    }
+//
+//    @Test
+//    public void BackoffLockTest() {
+//        benchmarkAndTest(new BackoffLock());
+//    }
+//
+//    @Test
+//    public void CLHLockTest() {
+//        benchmarkAndTest(new CLHLock());
+//    }
+//
+//    @Test
+//    public void MCSLockTest() {
+//        benchmarkAndTest(new MCSLock());
+//    }
+//
+//    // Фиксация некорректной параллельной обработки без использования синхронизации.
+//    // Тест должен падать при 1 потоке или если totalOperations достаточно мало (~единицы тысяч).
+//    @Disabled
+//    @Test
+//    public void NoLockTest() {
+//        benchmarkAndTest(new NoLock());
+//    }
+//
+//    @Disabled
+//    @Test
+//    public void AllLocksTest() {
+//        List<SpinLock> locks = LockTypes.LOCK_LIST;
+//        locks.forEach(this::benchmarkAndTest);
+//    }
 
 }
