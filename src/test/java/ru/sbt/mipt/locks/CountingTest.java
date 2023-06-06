@@ -15,9 +15,9 @@ public class CountingTest {
     // default benchmark parameters
     private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(
             5,          // nThreads
-            7,          // warmupIterations
+            5,          // warmupIterations
             5000,          // warmupMillisecs
-            3,          // measureIterations
+            10,          // measureIterations
             5000);          // measureMillisecs
     private static BenchmarkOptions options;
 
@@ -30,8 +30,9 @@ public class CountingTest {
     }
 
     private void benchmarkAndTest(SpinLock lock) {
+        String lockName = "[" + lock.getClass().getSimpleName() + "] ";
+        System.out.println("Benchmarking " + lockName);
         try {
-            String lockName = "[" + lock.getClass().getSimpleName() + "] ";
             long avgThroughput = 0;
 
             // warmup
@@ -53,6 +54,7 @@ public class CountingTest {
             System.out.println("Benchmark results for " + lock.getClass().getSimpleName() + ":");
             System.out.println(options);
             System.out.println("avgThroughput = " + avgThroughput + " op/sec");
+            System.out.println("$");
         } catch (InterruptedException e) {
             System.out.println("failed to benchmark " + lock.getClass().getSimpleName() + " due to error: " + e.getMessage());
         }
@@ -66,8 +68,8 @@ public class CountingTest {
         List<Thread> threadList = new ArrayList<>();
 
         for (int i = 0; i < options.nThreads(); i++) {
-            int threadInd = i;
-            Thread t = new Thread(() -> threadRunner(counter, threadInd));
+            int threadId = i;
+            Thread t = new Thread(() -> threadRunner(counter, threadId));
             threadList.add(t);
 
             t.start();
@@ -75,35 +77,30 @@ public class CountingTest {
 
         // sleep to wait until all threads start
         Thread.sleep(500);
+        // all the threads now start counting:
         counter.getLock().unlock();
-        // all the threads start counting
 
-        Thread.sleep(testTimeMillis); // 5 sec
+        Thread.sleep(testTimeMillis);
         long resultCount = counter.getCount();
         System.out.println(lockName + "counter = " + resultCount);
 
         // terminate worker-threads
-        System.out.println(lockName + "waiting for workers to end");
+//        System.out.println(lockName + "waiting for workers to end");
         threadList.forEach(Thread::interrupt);
         for (int i = 0; i < options.nThreads(); i++) {
-            while (threadList.get(i).isAlive()) {}
+            while (threadList.get(i).isAlive()) {
+            }
         }
-        System.out.println(lockName + "ended");
+//        System.out.println(lockName + "ended");
 
         return resultCount * 1000 / testTimeMillis; // op/sec
     }
 
-    private void threadRunner(SimpleCounter counter, int threadInd) {
-        String lockName = "[" + counter.getLock().getClass().getSimpleName() + "] ";
-
-        System.out.println(lockName + "thread " + threadInd + " started");
-
+    private void threadRunner(SimpleCounter counter, int threadId) {
         long internalCnt = 0;
-        for (int iter = 0; iter < 10_000_000 && !Thread.interrupted(); iter++) {
+        for (int iter = 0; iter < 100_000_000 && !Thread.interrupted(); iter++) {
             internalCnt = counter.addAndReturnNewValue(1);
         }
-
-        System.out.println(lockName + "thread " + threadInd + " finished execution with counter = " + internalCnt);
     }
 
     @Test
