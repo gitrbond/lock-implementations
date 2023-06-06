@@ -1,8 +1,10 @@
 package ru.sbt.mipt.locks;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class SimpleCounter {
     private long count;
     private SpinLock lock;
