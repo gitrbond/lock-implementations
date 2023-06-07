@@ -14,7 +14,7 @@ import static ru.sbt.mipt.locks.util.SystemPropertyParser.parseBenchmarkOptions;
 public class CountingTest {
     // default benchmark parameters
     private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(
-            5,          // nThreads
+            20,          // nThreads
             5,          // warmupIterations
             5000,          // warmupMillisecs
             10,          // measureIterations
@@ -93,7 +93,7 @@ public class CountingTest {
         }
 //        System.out.println(lockName + "ended");
 
-        return resultCount * 1000 / testTimeMillis; // op/sec
+        return resultCount * 1000 / testTimeMillis / options.nThreads(); // op/sec
     }
 
     private void threadRunner(SimpleCounter counter, int threadId) {
