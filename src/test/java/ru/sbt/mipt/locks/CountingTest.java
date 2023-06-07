@@ -14,7 +14,7 @@ import static ru.sbt.mipt.locks.util.SystemPropertyParser.parseBenchmarkOptions;
 public class CountingTest {
     // default benchmark parameters
     private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(
-            20,          // nThreads
+            5,          // nThreads
             5,          // warmupIterations
             5000,          // warmupMillisecs
             10,          // measureIterations
@@ -69,7 +69,14 @@ public class CountingTest {
 
         for (int i = 0; i < options.nThreads(); i++) {
             int threadId = i;
-            Thread t = new Thread(() -> threadRunner(counter, threadId));
+            Thread t = new Thread(() -> {
+                try {
+                    threadRunner(counter, threadId);
+                } catch (InterruptedException e) {
+                    // that is intended for BackoffLock to exit with exception as it has sleep() inside
+                    System.out.println("thread " + threadId + " stopped with exception");
+                }
+            });
             threadList.add(t);
 
             t.start();
@@ -85,22 +92,23 @@ public class CountingTest {
         System.out.println(lockName + "counter = " + resultCount);
 
         // terminate worker-threads
-//        System.out.println(lockName + "waiting for workers to end");
+        System.out.println(lockName + "waiting for workers to end");
         threadList.forEach(Thread::interrupt);
         for (int i = 0; i < options.nThreads(); i++) {
             while (threadList.get(i).isAlive()) {
             }
         }
-//        System.out.println(lockName + "ended");
+        System.out.println(lockName + "ended");
 
         return resultCount * 1000 / testTimeMillis / options.nThreads(); // op/sec
     }
 
-    private void threadRunner(SimpleCounter counter, int threadId) {
+    private void threadRunner(SimpleCounter counter, int threadId) throws InterruptedException {
         long internalCnt = 0;
-        for (int iter = 0; iter < 100_000_000 && !Thread.interrupted(); iter++) {
-            internalCnt = counter.addAndReturnNewValue(1);
+        for (int iter = 0; iter < 1_000_000_000 && !Thread.interrupted(); iter++) {
+            internalCnt += counter.addAndReturnIfAdded(1);
         }
+        System.out.println("thread " + threadId + " finished after counting to " + internalCnt);
     }
 
     @Test

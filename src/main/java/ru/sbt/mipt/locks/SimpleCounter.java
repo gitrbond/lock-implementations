@@ -14,16 +14,10 @@ public class SimpleCounter {
         this.lock = lock;
     }
 
-    public long addAndReturnNewValue(long value) {
+    public long addAndReturnIfAdded(long value) throws InterruptedException {
         lock.lock();
-        long returnValue;
-        try {
-            count += value;
-            returnValue = count;
-        } finally {
-            lock.unlock();
-        }
-        // returning a value does not allow JVM to optimise adding
-        return returnValue;
+        count += value;
+        lock.unlock();
+        return value;
     }
 }
