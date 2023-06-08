@@ -1,5 +1,6 @@
-# lock-implementations
-Implementations and benchmarking of TAS, TTAS, Backoff, CLH and MCS multithread locks by Roman Bondar & Dmitry Kravtsov.
+# Lock-implementations
+### Implementations and benchmarking of TAS, TTAS, Backoff, CLH and MCS multithread locks.
+#### by Roman Bondar & Dmitry Kravtsov.
 
 * TAS (Test-and-set) lock: лок, использующий при взятии лока атомарную операцию testAndSet. 
 Из-за сета переменной в цикле, страдает от постоянной инвалидации кеш-линий.
@@ -12,56 +13,36 @@ Implementations and benchmarking of TAS, TTAS, Backoff, CLH and MCS multithread 
 показывающий отпущен ли лок. Минус в том что процесс спинится на чужом кеше, что в NUMA архитектурах работает медленно
 * MCS lock: та же индуцированная очередь, но спинимся на своем узле.
 
-# Запуск
-
-Сборка: ```gradle build```
-
-Проект позволяет запустить тестирование определенного лока при многопоточном доступе к одному ресурсу - для 
+Проект позволяет запустить тестирование определенного лока при многопоточном доступе к одному ресурсу - для
 простоты, был создан класс ```Counter``` со счетчиком. Доступ к счетчику является критической секцией, доступ к которой
 организован через нужный лок.
 
-Запустить тест конкретного лока с параметрами можно командой 
-```gradle test --tests CountingTest.TASLockTest -DnThreads=3 -DmeasureTasks=100000```. 
-Синтаксис параметров: ```-D<option>=<value>```. 
-Будет запущено тестирование 3 потоков, выполняющих параллельно 100_000 операций инкремента на counter-е, 
-доступ к которому организован при помощи лока ```TASLock```.
+### Сборка
+Потребуется Java (тестировалось на версии 17, но должно работать и на предыдущих), gradle. Заходим в корень проекта, где лежит файл build.gradle, запускаем:
+```gradle build```
+Сборка jar-файла опциональна.
 
-Доступные параметры:
-- ```nThreads``` - число потоков в тестировании
-- ```warmupTasks``` - общее число задач на инкремент, распеделенных между потоками на одном этапе разогрева
-- ```warmupIters``` - число итераций разогрева (в каждой итерации выполняется warmupTasks операций)
-- ```measureTasks``` - общее число задач на инкремент, распеделенных между потоками на одном этапе измерений
-- ```measureIters``` - число итераций измерений, результат будет усреднен.
+### Запуск
+Общая команда для пакетного запуска набора тестов производительности (бенчмарков):
 
-# Тестирование при помощи JMH (Java Microbenchmark Harness) 
+`java -Dverbose -DlockTypes=TAS,TTAS,Backoff;CLH;MCS  "-DnThreads=1 2 4 8 16 24 32 40" -DwarmupIters=5 -DwarmupMillisecs=11000 -DmeasureIters=4 -DmeasureMillisecs=5000 -cp "build\classes\java\test\;build\classes\java\main\"    ru.sbt.mipt.locks.CountingTest`
+
+Параметры:
+- ```verbose``` - подробный режим (лучше опускать);
+- ```lockTypes=TAS,TTAS,Backoff;CLH;MCS``` - типы локов участвующие в тестировании - любой набор из указанного списка, разделенный запятыми, ; или пробелами (тогда весь параметр в кавычки);
+- ```nThreads``` - список количеств потоков, для которых нужно прогнать тесты, разделенный запятыми, ; или пробелами (тогда весь параметр в кавычки);
+- ```warmupIters``` - число итераций прогрева JVM; 
+- ```warmupMillisecs``` - длительность каждой итерации прогрева в миллисекундах;
+- ```measureIters``` - число итераций бенчмарка, результат будет усреднен;
+- ```measureMillisecs``` - длительность каждой итерации бенчмарка в миллисекундах.
+- `-cp "build\classes\java\test\;build\classes\java\main\"` - пути к классам, получившимся после сборки.
+- `ru.sbt.mipt.locks.CountingTest` - какой класс запускать 
+
+### Тестирование при помощи JMH (Java Microbenchmark Harness) 
 
 Команда ```gradle jmh``` позволяет запустить бенчмарк на каждом локе в отдельности 
 (исследуется само время между входом и выходом из функции инкремента), и по полученным результатам можно сделать вывод
 о latency лока.
 
-# Предварительные результаты тестирования 
-Результат исполнение команды `gradle test -DnThreads=5 -DwarmupTasks=1000000 -DwarmupIters=7 -DmeasureTasks=1000000 -DmeasureIters=3`:
 
-Самым быстрым оказался BackoffLock, а самым медленным - TASLock. На предпоследнем месте MCSLock, что удивительно и требует дальнейшего исследования. Следом TTASLock и CLHLock с ощутимой разницей в перфомансе. 
-~~~
-$
-Benchmark results for BackoffLock:
-BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
-avgTime to execute one task = 2330ns
-$
-Benchmark results for CLHLock:
-BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
-avgTime to execute one task = 3250ns
-$
-Benchmark results for TTASLock:
-BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
-avgTime to execute one task = 3805ns
-$
-Benchmark results for MCSLock:
-BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
-avgTime to execute one task = 4010ns
-$
-Benchmark results for TASLock:
-BenchmarkOptions[nThreads=5, warmupIterations=7, nWarmupTotalTasks=1000000, measureIterations=3, nMeasureTotalTasks=1000000]
-avgTime to execute one task = 4025ns
 ~~~

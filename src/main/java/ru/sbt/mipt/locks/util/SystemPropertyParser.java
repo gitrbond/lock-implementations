@@ -19,8 +19,7 @@ public class SystemPropertyParser {
     public static SpinLock parseLockType() {
         // get property value from system properties
         String lockType = System.getProperty(LOCK_TYPE_PROP);
-
-        System.out.println("lockType = " + lockType);
+//        System.out.println("lockType = " + lockType);
 
         // default lock type
         if (lockType.equals("")) {
@@ -30,7 +29,7 @@ public class SystemPropertyParser {
         // return specific lock
         return LOCK_TYPES_LIST.stream()
                 .filter(l -> l.getClass().getSimpleName().equals(lockType)).findAny().orElseThrow(
-                        () -> new IllegalArgumentException("lock type '" + lockType + "' is not defined"));
+                        () -> new IllegalArgumentException("lock type '" + lockType + "' is unknown"));
     }
 
     // gets options, overrides its fields with ones from sysProperties and returns new exemplar
@@ -41,17 +40,13 @@ public class SystemPropertyParser {
         String pMeasureIterations = System.getProperty(BENCH_MEASURE_ITER_PROP);
         String pMeasureMillisecs = System.getProperty(BENCH_MEASURE_TIME_PROP);
 
-        int nThreads = pNThreads.equals("") ? current.nThreads() : Integer.parseInt(pNThreads);
-        long warmupIterations = pWarmupIterations.equals("")
-                ? current.warmupIterations() : Long.parseLong(pWarmupIterations);
-        long nWarmupTotalTasks = pWarmupMillisecs.equals("")
-                ? current.warmupMillisecs() : Long.parseLong(pWarmupMillisecs);
-        long measureIterations = pMeasureIterations.equals("")
-                ? current.measureIterations() : Long.parseLong(pMeasureIterations);
-        long nMeasureTotalTasks = pMeasureMillisecs.equals("")
-                ? current.measureMillisecs() : Long.parseLong(pMeasureMillisecs);
+//        int nThreads = pNThreads == null ? current.nThreads() : 0 ;//Integer.parseInt(pNThreads);
+        long warmupIterations = pWarmupIterations == null ? current.warmupIterations() : Long.parseLong(pWarmupIterations); // "".equals(pWarmupIterations)
+        long nWarmupTotalTasks = pWarmupMillisecs == null ? current.warmupMillisecs() : Long.parseLong(pWarmupMillisecs);
+        long measureIterations = pMeasureIterations == null ? current.measureIterations() : Long.parseLong(pMeasureIterations);
+        long nMeasureTotalTasks = pMeasureMillisecs == null ? current.measureMillisecs() : Long.parseLong(pMeasureMillisecs);
 
-        return new BenchmarkOptions(nThreads,
+        return new BenchmarkOptions(pNThreads,
                 warmupIterations,
                 nWarmupTotalTasks,
                 measureIterations,

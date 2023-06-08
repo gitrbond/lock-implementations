@@ -1,6 +1,6 @@
 package ru.sbt.mipt.locks;
 
-public record BenchmarkOptions(int nThreads,
+public record BenchmarkOptions(String nThreads,
                                long warmupIterations,
                                long warmupMillisecs,
                                long measureIterations,
