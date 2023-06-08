@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class SimpleCounter {
-    private long count;
+    public volatile long count;
     private SpinLock lock;
 
     public SimpleCounter(long count, SpinLock lock) {
@@ -15,9 +15,19 @@ public class SimpleCounter {
     }
 
     public long addAndReturnIfAdded(long value) throws InterruptedException {
+//        lock.lock();
+//        count += value;
+//        lock.unlock();
+//        return value;
+
+        long returnValue = 0;
         lock.lock();
-        count += value;
-        lock.unlock();
-        return value;
+        try {
+            count += value;
+            returnValue = value;
+        } finally {
+            lock.unlock();
+        }
+        return returnValue;
     }
 }
