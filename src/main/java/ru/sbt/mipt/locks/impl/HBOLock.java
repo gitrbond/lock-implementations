@@ -1,18 +1,20 @@
 package ru.sbt.mipt.locks.impl;
 
 import ru.sbt.mipt.locks.SpinLock;
+import ru.sbt.mipt.locks.util.ThreadID;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.Math.random;
 
-public class BackoffLock implements SpinLock {
-    AtomicBoolean locked = new AtomicBoolean(false);
+public class HBOLock implements SpinLock {
+    private static final int FREE = -1;
+    AtomicInteger state = new AtomicInteger(FREE);
     // limits in milliseconds
     private long MIN_DELAY = 1;
-    private long MAX_DELAY = 1024;
+    private long MAX_DELAY = 64;
 
-    public BackoffLock(long MIN_DELAY, long MAX_DELAY) {
+    public HBOLock(long MIN_DELAY, long MAX_DELAY) {
         if (MAX_DELAY < MIN_DELAY) {
             throw new IllegalArgumentException("MAX_DELAY must be greater than MIN_DELAY");
         }
@@ -20,15 +22,17 @@ public class BackoffLock implements SpinLock {
         this.MAX_DELAY = MAX_DELAY;
     }
 
-    public BackoffLock() {
+    public HBOLock() {
     }
 
     @Override
     public void lock() throws InterruptedException {
+        int myCluster = ThreadID.getCluster();
         long delay, currentMaxDelay = MIN_DELAY;
         while (true) {
-            while (locked.get()) {}
-            if (!locked.getAndSet(true)) {
+            while (state.get() != FREE) {
+            }
+            if (state.compareAndSet(FREE, myCluster)) {
                 // lock acquired, exiting
                 return;
             }
@@ -36,18 +40,23 @@ public class BackoffLock implements SpinLock {
             // delay is chosen randomly in [MIN_DELAY, currentMaxDelay) interval
             delay = (long) (MIN_DELAY + (currentMaxDelay - MIN_DELAY) * random());
 
-            Thread.sleep(delay);
+            int currClaster = state.get();
+            if (myCluster == currClaster) {
+                Thread.sleep(delay);
+            } else {
+                Thread.sleep(delay * 2);
+            }
         }
     }
 
     @Override
     public void unlock() {
-        locked.set(false);
+        state.set(FREE);
     }
 
     @Override
     public String toString() {
-        return "BackoffLock{" +
+        return "HBOLock{" +
                 "MIN_DELAY=" + MIN_DELAY +
                 ", MAX_DELAY=" + MAX_DELAY +
                 '}';

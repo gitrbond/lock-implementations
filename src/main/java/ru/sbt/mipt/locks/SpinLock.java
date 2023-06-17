@@ -10,11 +10,4 @@ public interface SpinLock {
      * Освободить лок
      */
     void unlock();
-
-    /**
-     * Проверить свободен ли лок
-     * @return {@code true}, если лок захвачен каким-то потоком
-     *
-     */
-    boolean isLocked();
 }

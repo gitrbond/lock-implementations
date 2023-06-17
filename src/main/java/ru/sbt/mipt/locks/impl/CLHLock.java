@@ -5,54 +5,35 @@ import ru.sbt.mipt.locks.SpinLock;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class CLHLock implements SpinLock {
-
-    static class Node {
-        public boolean locked = false;
+    private static class Node {
+        private volatile boolean locked = false;
     }
-
-    AtomicReference<Node> tail;
-
-    ThreadLocal<Node> node, pred;
-
+    private final AtomicReference<Node> tail;
+    private final ThreadLocal<Node> node, pred;
     public CLHLock() {
         tail = new AtomicReference<Node>(new Node());
-        node = new ThreadLocal<Node>() {
-            protected Node initialValue() {
-                return new Node();
-            }
-        };
-        pred = new ThreadLocal<Node>() {
-            protected Node initialValue() {
-                return null;
-            }
-        };
+        this.node = ThreadLocal.withInitial(() -> new Node());
+        this.pred = ThreadLocal.withInitial(() -> null);
     }
 
     public void lock() {
-        Node qnode = node.get();
+        Node qnode = this.node.get();
         qnode.locked = true;
-        Node pred = tail.getAndSet(qnode);
-        this.pred.set(pred);
-        while (pred.locked) {
-            System.out.print("");
+        Node newPred = this.tail.getAndSet(qnode);
+        this.pred.set(newPred);
+        while(newPred.locked) {
+            Thread.yield();
         }
     }
 
     public void unlock() {
-        Node qnode = node.get();
+        Node qnode = this.node.get();
         qnode.locked = false;
-        node.set(pred.get());
+        this.node.set(this.pred.get());
     }
 
-    public boolean isLocked() {
-        if (tail.get() == null)
-            return false;
-        else {
-            Node current = tail.get();
-            if (current.locked == true)
-                return true;
-            else
-                return false;
-        }
+    @Override
+    public String toString() {
+        return "CLHLock";
     }
 }

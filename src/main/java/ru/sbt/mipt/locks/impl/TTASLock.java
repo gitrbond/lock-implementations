@@ -10,7 +10,7 @@ public class TTASLock implements SpinLock {
     @Override
     public void lock() {
         while (true) {
-            while (locked.get()) {};
+            while (locked.get()) {}
             if (!locked.getAndSet(true)) // лок все еще не захвачен?
                 return; // захватили лок, выходим
         }
@@ -22,8 +22,7 @@ public class TTASLock implements SpinLock {
     }
 
     @Override
-    public boolean isLocked() {
-        return locked.get();
+    public String toString() {
+        return "TTASLock";
     }
-
 }

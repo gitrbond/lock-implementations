@@ -18,7 +18,7 @@ public class TASLock implements SpinLock {
     }
 
     @Override
-    public boolean isLocked() {
-        return locked.get();
+    public String toString() {
+        return "TASLock";
     }
 }

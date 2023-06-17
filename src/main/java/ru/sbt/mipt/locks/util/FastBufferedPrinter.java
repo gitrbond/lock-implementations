@@ -6,11 +6,11 @@ import java.io.OutputStreamWriter;
 
 public class FastBufferedPrinter {
     private final BufferedWriter out = new BufferedWriter(new OutputStreamWriter(System.out));
-
     public void print(String s) {
         try {
             out.write(s + "\n");
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

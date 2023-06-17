@@ -1,33 +1,30 @@
 package ru.sbt.mipt.locks;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@AllArgsConstructor
 public class SimpleCounter {
-    public volatile long count;
+    public long count;
     private SpinLock lock;
 
-    public SimpleCounter(long count, SpinLock lock) {
-        this.count = count;
-        this.lock = lock;
+    public long addAndReturnIfAdded(long value) throws InterruptedException {
+        lock.lock();
+        // critical section
+        count += value;
+        //
+        lock.unlock();
+        return value;
     }
 
-    public long addAndReturnIfAdded(long value) throws InterruptedException {
-//        lock.lock();
-//        count += value;
-//        lock.unlock();
-//        return value;
-
-        long returnValue = 0;
+    public long getCount() throws InterruptedException {
+        long returnValue;
         lock.lock();
-        try {
-            count += value;
-            returnValue = value;
-        } finally {
-            lock.unlock();
-        }
+        returnValue = count;
+        lock.unlock();
         return returnValue;
     }
 }

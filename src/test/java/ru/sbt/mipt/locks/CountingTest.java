@@ -16,11 +16,11 @@ import static ru.sbt.mipt.locks.util.SystemPropertyParser.parseBenchmarkOptions;
 public class CountingTest {
     // default benchmark parameters
     private static final BenchmarkOptions defaultOptions = new BenchmarkOptions(
-            8,          // nThreads
+            21,          // nThreads
             5,          // warmupIterations
             5000,          // warmupMillisecs
-            10,          // measureIterations
-            5000);          // measureMillisecs
+            5,          // measureIterations
+            10000);          // measureMillisecs
     private static BenchmarkOptions options;
     // a fast way to print logs
     static FastBufferedPrinter out;
@@ -34,10 +34,10 @@ public class CountingTest {
         out = new FastBufferedPrinter();
     }
 
-    private void benchmarkAndTest(SpinLock lock) {
+    private void benchmark(SpinLock lock) {
         String lockName = "[" + lock.getClass().getSimpleName() + "] ";
         try {
-        out.print("Benchmarking " + lockName);
+            out.print("Benchmarking " + lock.toString());
             long avgThroughput = 0;
 
             // warmup
@@ -58,7 +58,7 @@ public class CountingTest {
             avgThroughput /= options.measureIterations();
 
             out.print("$");
-            out.print("Benchmark results for " + lock.getClass().getSimpleName() + ":");
+            out.print("Benchmark results for " + lock.toString() + ":");
             out.print(options.toString());
             out.print("avgThroughput = " + avgThroughput + " op/sec");
             out.print("$");
@@ -83,7 +83,7 @@ public class CountingTest {
                     threadRunner(counter, threadId);
                 } catch (InterruptedException | IOException e) {
                     // that is intended for BackoffLock to exit with exception as it has sleep() inside
-                    out.print("thread " + threadId + " stopped with exception");
+                    out.print("thread " + threadId + " stopped with exception. " + e.getMessage());
                 }
             });
             threadList.add(t);
@@ -97,12 +97,14 @@ public class CountingTest {
         counter.getLock().unlock();
 
         Thread.sleep(testTimeMillis);
-        long resultCount = counter.count;
-        out.print(lockName + "counter = " + resultCount);
 
         // terminate worker-threads
 //        out.print(lockName + "waiting for workers to end");
         threadList.forEach(Thread::interrupt);
+
+        long resultCount = counter.getCount();
+        out.print(lockName + "final counter = " + resultCount);
+
         for (int i = 0; i < options.nThreads(); i++) {
             while (threadList.get(i).isAlive()) {
             }
@@ -115,34 +117,67 @@ public class CountingTest {
     private void threadRunner(SimpleCounter counter, int threadId) throws InterruptedException, IOException {
         long internalCnt = 0;
         while (!Thread.interrupted()) {
-            internalCnt += counter.addAndReturnIfAdded(1);
+            try {
+                internalCnt += counter.addAndReturnIfAdded(1);
+            } catch (InterruptedException e) {
+                throw new InterruptedException("counter = " + internalCnt);
+            }
         }
         out.print("thread " + threadId + " finished after counting to " + internalCnt);
     }
 
     @Test
     public void TASLockTest() {
-        benchmarkAndTest(new TASLock());
+        benchmark(new TASLock());
     }
 
     @Test
     public void TTASLockTest() {
-        benchmarkAndTest(new TTASLock());
+        benchmark(new TTASLock());
     }
 
     @Test
     public void BackoffLockTest() {
-        benchmarkAndTest(new BackoffLock());
+        benchmark(new BackoffLock());
     }
 
     @Test
-    public void CLHLockTest() {
-        benchmarkAndTest(new CLHLock());
+    public void CustomLockTest() {
+        int[] nThreadsArray = new int[]{1, 2, 4, 6, 8, 16, 32, 64};
+//        int[] nThreadsArray = new int[]{16};
+        BenchmarkOptions[] optionsArray = new BenchmarkOptions[nThreadsArray.length];
+        for (int i = 0; i < optionsArray.length; i++) {
+            int nThreads = nThreadsArray[i];
+            long time = options.measureMillisecs();
+            if (nThreads >= 20) {
+                time = 20000;
+            }
+            if (nThreads >= 32) {
+                time = 30000;
+            }
+            if (nThreads >= 64) {
+                time = 60000;
+            }
+            optionsArray[i] = new BenchmarkOptions(nThreads,
+                    options.warmupIterations(),
+                    options.warmupMillisecs(),
+                    options.measureIterations(),
+                    time);
+        }
+        for (BenchmarkOptions benchmarkOptions : optionsArray) {
+            options = benchmarkOptions;
+//            benchmark(new TASLock());
+//            benchmark(new TTASLock());
+            benchmark(new BackoffLock(1, 64));
+            benchmark(new HBOLock(1, 64));
+//            benchmark(new CLHLock());
+//            benchmark(new MCSLock());
+        }
     }
 
     @Test
     public void MCSLockTest() {
-        benchmarkAndTest(new MCSLock());
+        benchmark(new MCSLock());
     }
 
     // Фиксация некорректной параллельной обработки без использования синхронизации.
@@ -150,14 +185,14 @@ public class CountingTest {
     @Disabled
     @Test
     public void NoLockTest() {
-        benchmarkAndTest(new NoLock());
+        benchmark(new NoLock());
     }
 
-    //    @Disabled
+    @Disabled
     @Test
     public void AllLocksTest() {
         List<SpinLock> locks = LockTypes.LOCK_LIST;
-        locks.forEach(this::benchmarkAndTest);
+        locks.forEach(this::benchmark);
     }
 
 }
