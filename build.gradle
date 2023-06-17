@@ -31,9 +31,9 @@ test {
     systemProperty 'lockType', System.getProperty('lockType')
     systemProperty 'nThreads', System.getProperty('nThreads')
     systemProperty 'warmupIters', System.getProperty('warmupIters')
-    systemProperty 'warmupTasks', System.getProperty('warmupTasks')
+    systemProperty 'warmupMillisecs', System.getProperty('warmupMillisecs')
     systemProperty 'measureIters', System.getProperty('measureIters')
-    systemProperty 'measureTasks', System.getProperty('measureTasks')
+    systemProperty 'measureMillisecs', System.getProperty('measureMillisecs')
 }
 
 tasks.named('test') {

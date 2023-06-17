@@ -4,7 +4,7 @@ public interface SpinLock {
     /**
      * Захватить лок
      */
-    void lock();
+    void lock() throws InterruptedException;
 
     /**
      * Освободить лок
@@ -17,5 +17,4 @@ public interface SpinLock {
      *
      */
     boolean isLocked();
-
 }

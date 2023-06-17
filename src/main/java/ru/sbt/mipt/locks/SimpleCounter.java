@@ -1,27 +1,23 @@
 package ru.sbt.mipt.locks;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class SimpleCounter {
     private long count;
-    private static SpinLock lock;
+    private SpinLock lock;
 
     public SimpleCounter(long count, SpinLock lock) {
         this.count = count;
-        SimpleCounter.lock = lock;
+        this.lock = lock;
     }
 
-    public long addAndReturnNewValue(long value) {
+    public long addAndReturnIfAdded(long value) throws InterruptedException {
         lock.lock();
-        long returnValue;
-        try {
-            count += value;
-            returnValue = count;
-        } finally {
-            lock.unlock();
-        }
-        // returning a value does not allow JVM to optimise adding
-        return returnValue;
+        count += value;
+        lock.unlock();
+        return value;
     }
 }
