@@ -20,8 +20,8 @@ public class MCSLock implements SpinLock {
     }
 
     public void lock() {
-        Node qnode = node.get();
-        Node pred = tail.getAndSet(qnode);
+        Node qnode = this.node.get();
+        Node pred = this.tail.getAndSet(qnode);
         if (pred != null) {
             qnode.locked = true;
             pred.next = qnode;
