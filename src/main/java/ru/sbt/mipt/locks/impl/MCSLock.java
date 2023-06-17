@@ -6,22 +6,17 @@ import java.util.concurrent.atomic.AtomicReference;
 
 
 public class MCSLock implements SpinLock {
-
     class Node {
         volatile boolean locked = false;
         volatile Node next = null;
     }
 
-    AtomicReference<Node> tail;
-    ThreadLocal<Node> node;
+    private final AtomicReference<Node> tail;
+    private final ThreadLocal<Node> node;
 
     public MCSLock() {
         tail = new AtomicReference<Node>(null);
-        node = new ThreadLocal<Node>() {
-            protected Node initialValue() {
-                return new Node();
-            }
-        };
+        this.node = ThreadLocal.withInitial(() -> new Node());
     }
 
     public void lock() {
@@ -31,16 +26,17 @@ public class MCSLock implements SpinLock {
             qnode.locked = true;
             pred.next = qnode;
             while (qnode.locked) {
-                System.out.print("");
+                Thread.yield();
             }
         }
     }
 
     public void unlock() {
-        Node qnode = node.get();
+        Node qnode = this.node.get();
         if (qnode.next == null) {
-            if (tail.compareAndSet(qnode, null))
+            if (this.tail.compareAndSet(qnode, null)) {
                 return;
+            }
             while (qnode.next == null) {
             }
         }
@@ -48,12 +44,8 @@ public class MCSLock implements SpinLock {
         qnode.next = null;
     }
 
-    public boolean isLocked() {
-        Node tail = this.tail.get();
-        if (tail == null)
-            return false;
-        else
-            return true;
+    @Override
+    public String toString() {
+        return "MCSLock";
     }
-
 }
